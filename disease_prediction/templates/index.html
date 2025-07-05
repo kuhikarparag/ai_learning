@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Disease Prediction</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f8f9fa; }
+        .container { max-width: 800px; margin-top: 60px; background: #fff; border-radius: 10px; box-shadow: 0 0 10px #ccc; padding: 30px; }
+        h1 { color: #0d6efd; text-align: center; margin-bottom: 30px; }
+        .result-box { margin-top: 20px; display: none; }
+        .tab-content { margin-top: 20px; }
+        .slider-value { font-weight: bold; }
+    </style>
+</head>
+<body>
+<div class="container-fluid min-vh-100 bg-light p-0">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
+        <div class="container-fluid">
+            <a class="navbar-brand fw-bold" href="#">Disease Prediction App</a>
+        </div>
+    </nav>
+    <div class="container-fluid py-4 d-flex align-items-center justify-content-center" style="min-height:80vh;">
+        <div class="row g-4 align-items-start flex-nowrap w-100" style="max-width:1600px;">
+            <div class="col-md-5 col-lg-4">
+                <div class="card shadow-sm mb-4">
+                    <div class="card-body">
+                        <h4 class="card-title text-primary mb-3">Patient Details</h4>
+                        <form id="predict-form">
+                            <div class="mb-3">
+                                <label class="form-label">Gender</label><br>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="gender" id="male" value="male" required>
+                                    <label class="form-check-label" for="male">Male</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="gender" id="female" value="female">
+                                    <label class="form-check-label" for="female">Female</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="gender" id="other" value="other">
+                                    <label class="form-check-label" for="other">Other</label>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="age" class="form-label">Age: <span class="slider-value text-primary" id="age-value">30</span></label>
+                                <input type="range" class="form-range" id="age" name="age" min="0" max="120" value="30" oninput="document.getElementById('age-value').innerText = this.value">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Select Symptoms</label>
+                                <div class="row">
+                                    {% set symptoms = [
+                                        'fever', 'body_ache', 'fatigue', 'headache', 'nausea', 'sensitivity_to_light',
+                                        'runny_nose', 'sneezing', 'congestion', 'sore_throat', 'cough', 'chest_congestion',
+                                        'stomach_pain', 'diarrhea', 'joint_pain', 'stiffness', 'swelling', 'anxiety',
+                                        'restlessness', 'insomnia', 'allergies', 'itching', 'rash', 'muscle_pain',
+                                        'sprain', 'cold'
+                                    ] %}
+                                    {% for symptom in symptoms %}
+                                    <div class="col-6 col-lg-6">
+                                        <div class="form-check mb-1">
+                                            <input class="form-check-input" type="checkbox" name="symptoms" value="{{ symptom }}" id="symptom-{{ loop.index }}">
+                                            <label class="form-check-label" for="symptom-{{ loop.index }}">
+                                                {{ symptom.replace('_', ' ').title() }}
+                                            </label>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-7 col-lg-8">
+                <div class="row mb-2">
+                    <div class="col-12">
+                        <button type="submit" form="predict-form" class="btn btn-primary w-100">Predict</button>
+                    </div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-12">
+                        <div id="loader" style="display:none;text-align:center;margin:20px 0;">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <div>Generating prediction, please wait...</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-12">
+                        <div class="result-box alert alert-success shadow-sm mt-2" id="result">
+                            <ul class="nav nav-tabs" id="resultTabs" role="tablist">
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link active" id="diseases-tab" data-bs-toggle="tab" data-bs-target="#diseases" type="button" role="tab">Diseases</button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="medicines-tab" data-bs-toggle="tab" data-bs-target="#medicines" type="button" role="tab">Medicines</button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="remedies-tab" data-bs-toggle="tab" data-bs-target="#remedies" type="button" role="tab">Home Remedies</button>
+                                </li>
+                            </ul>
+                            <div class="tab-content">
+                                <div class="tab-pane fade show active" id="diseases" role="tabpanel">
+                                    <h5 class="mt-3">Predicted Diseases</h5>
+                                    <div id="diseases-summary" class="mb-2 text-secondary small"></div>
+                                    <table class="table table-bordered table-hover mt-2 bg-white">
+                                        <thead class="table-light"><tr><th>Name</th><th>Confidence (%)</th><th>Info Link</th></tr></thead>
+                                        <tbody id="disease-table"></tbody>
+                                    </table>
+                                </div>
+                                <div class="tab-pane fade" id="medicines" role="tabpanel">
+                                    <h5 class="mt-3">Predicted Medicines</h5>
+                                    <div id="medicines-summary" class="mb-2 text-secondary small"></div>
+                                    <table class="table table-bordered table-hover mt-2 bg-white">
+                                        <thead class="table-light"><tr><th>Name</th><th>Confidence (%)</th><th>Times/Day</th><th>Image</th><th>Buy Link</th></tr></thead>
+                                        <tbody id="medicine-table"></tbody>
+                                    </table>
+                                </div>
+                                <div class="tab-pane fade" id="remedies" role="tabpanel">
+                                    <h5 class="mt-3">Home Remedies</h5>
+                                    <div id="remedies-summary" class="mb-2 text-secondary small"></div>
+                                    <div class="mb-2"><strong>Disease-specific Remedies:</strong> <span id="disease-remedies"></span></div>
+                                    <div><strong>Generic Remedies:</strong> <span id="generic-remedies"></span></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+$('#predict-form').on('submit', function(e) {
+    e.preventDefault();
+    $('#loader').show();
+    $('#result').hide();
+    var gender = $('input[name="gender"]:checked').val();
+    var age = $('#age').val();
+    var symptoms = [];
+    $('input[name="symptoms"]:checked').each(function() {
+        symptoms.push($(this).val());
+    });
+    if (!gender || !age || symptoms.length === 0) {
+        alert('Please fill all fields and select at least one symptom.');
+        $('#loader').hide();
+        return;
+    }
+    $.ajax({
+        url: '/predict',
+        method: 'POST',
+        data: { gender: gender, age: age, symptoms: symptoms },
+        traditional: true,
+        success: function(response) {
+            $('#loader').hide();
+            if (response.success) {
+                // Medicines
+                var medRows = '';
+                var medSummary = '';
+                var medCount = (response.medicines || []).length;
+                if (medCount > 0) {
+                    medSummary = 'Total medicines suggested: ' + medCount + '. ';
+                    medSummary += 'Most common: ' + (response.medicines[0].name || '') + (response.medicines[0].times_per_day ? ' (' + response.medicines[0].times_per_day + 'x/day)' : '');
+                } else {
+                    medSummary = 'No medicines suggested.';
+                }
+                (response.medicines || []).forEach(function(med) {
+                    medRows += '<tr>' +
+                        '<td>' + (med.name || '') + '</td>' +
+                        '<td>' + (med.confidence || '') + '</td>' +
+                        '<td>' + (med.times_per_day !== undefined ? med.times_per_day : '') + '</td>' +
+                        '<td>' + (med.image_url ? '<img src="' + med.image_url + '" style="max-width:80px;max-height:80px;">' : '') + '</td>' +
+                        '<td>' + (med.buy_url ? '<a href="' + med.buy_url + '" target="_blank">Buy</a>' : '') + '</td>' +
+                        '</tr>';
+                });
+                $('#medicine-table').html(medRows);
+                $('#medicines-summary').text(medSummary);
+                // Diseases
+                var diseaseRows = '';
+                var diseaseSummary = '';
+                var diseaseCount = (response.diseases || []).length;
+                if (diseaseCount > 0) {
+                    diseaseSummary = 'Total diseases predicted: ' + diseaseCount + '. Most likely: ' + (response.diseases[0].name || '');
+                } else {
+                    diseaseSummary = 'No diseases predicted.';
+                }
+                (response.diseases || []).forEach(function(d) {
+                    diseaseRows += '<tr>' +
+                        '<td>' + (d.name || '') + '</td>' +
+                        '<td>' + (d.confidence || '') + '</td>' +
+                        '<td>' + (d.info_url ? '<a href="' + d.info_url + '" target="_blank">Info</a>' : '') + '</td>' +
+                        '</tr>';
+                });
+                $('#disease-table').html(diseaseRows);
+                $('#diseases-summary').text(diseaseSummary);
+                // Remedies
+                var remediesSummary = '';
+                // Disease-specific remedies by dietary category (ordered list)
+                var diseaseRemedies = response.disease_remedies || {};
+                var diseaseName = response.disease_name || '';
+                var diseaseRemediesHtml = '';
+                if (diseaseName) {
+                    diseaseRemediesHtml += '<div class="mb-2"><strong>Disease:</strong> <span class="text-primary">' + diseaseName + '</span></div>';
+                }
+                if (Object.keys(diseaseRemedies).length > 0) {
+                    for (var category in diseaseRemedies) {
+                        if (diseaseRemedies.hasOwnProperty(category)) {
+                            diseaseRemediesHtml += '<div class="mb-2"><strong>' + category.charAt(0).toUpperCase() + category.slice(1) + ':</strong>';
+                            diseaseRemediesHtml += '<ol>';
+                            (diseaseRemedies[category] || []).forEach(function(rem) {
+                                diseaseRemediesHtml += '<li>' + rem + '</li>';
+                            });
+                            diseaseRemediesHtml += '</ol></div>';
+                        }
+                    }
+                } else {
+                    diseaseRemediesHtml += '<span>No specific remedies found.</span>';
+                }
+                $('#disease-remedies').html(diseaseRemediesHtml);
+                // Generic remedies (ordered list)
+                var genericRemedies = response.generic_remedies || [];
+                var genericRemediesHtml = '';
+                if (genericRemedies.length > 0) {
+                    genericRemediesHtml = '<ol>';
+                    genericRemedies.forEach(function(rem) {
+                        genericRemediesHtml += '<li>' + rem + '</li>';
+                    });
+                    genericRemediesHtml += '</ol>';
+                } else {
+                    genericRemediesHtml = '<span>No generic remedies found.</span>';
+                }
+                $('#generic-remedies').html(genericRemediesHtml);
+                $('#result').show();
+                // Show first tab (Diseases)
+                var tab = new bootstrap.Tab($('#diseases-tab')[0]);
+                tab.show();
+            } else {
+                alert(response.error || 'Prediction failed.');
+            }
+        },
+        error: function() {
+            $('#loader').hide();
+            alert('Server error.');
+        }
+    });
+});
+</script>
+</body>
+</html>
