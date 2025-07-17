@@ -1,0 +1,25 @@
+name: Examples CI
+
+on:
+  push:
+    paths:
+      - 'examples/**'
+  pull_request:
+    paths:
+      - 'examples/**'
+
+jobs:
+  php:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+
+      - name: Run PHP lint
+        run: |
+          find examples -name "*.php" -exec php -l {} \;
