@@ -1,5 +1,4 @@
 <?php
-<?php
 function isPrime($n) {
     if ($n <= 1) {
         return false;
@@ -9,10 +8,10 @@ function isPrime($n) {
             return false;
         }
     }
-    // Deliberate error: should return true if no divisors found
-    return false; // <-- This is incorrect!
+    // Corrected: Return true if no divisors found
+    return true;
 }
 
 // Example usage:
-var_dump(isPrime(7)); // Should be true, but returns false
+var_dump(isPrime(7)); // Should now return true
 ?>
