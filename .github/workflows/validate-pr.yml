@@ -33,6 +33,7 @@ jobs:
       - name: Run Python lint and tests
         if: matrix.language == 'python'
         run: |
+          python -m pip install flake8
           python -m flake8 .
           python -m unittest discover
 
