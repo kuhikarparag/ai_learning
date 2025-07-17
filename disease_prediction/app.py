@@ -26,7 +26,7 @@ def gemini_predict(prompt):
     try:
         model = genai.GenerativeModel('gemini-2.0-flash')
         response = model.generate_content(prompt)
-        
+
         # Extract JSON from response
         if response.text:
             # Use regex to extract JSON block
@@ -40,7 +40,7 @@ def gemini_predict(prompt):
         else:
             print("Empty response from Gemini")
             return None
-            
+
     except Exception as e:
         print(f'Gemini API error: {e}')
         return None
@@ -79,39 +79,39 @@ def home():
 def predict():
     try:
         print("Starting prediction process...")
-        
+
         # Get form data with default values
         gender = request.form.get('gender', '').strip()
         age = request.form.get('age', '').strip()
         symptoms = request.form.get('symptoms', '').strip()
-        
+
         # Validate input
         if not all([gender, age, symptoms]):
             return jsonify({
                 'error': 'Missing required fields: gender, age, or symptoms',
                 'success': False
             })
-        
+
         print(f"Input data - Gender: {gender}, Age: {age}, Symptoms: {symptoms}")
-        
+
         # 1. Medicine prediction
         prompt_medicine = safe_format_prompt(PROMPT_MEDICINE, gender=gender, age=age, symptoms=symptoms)
         if not prompt_medicine:
             return jsonify({'error': 'Failed to format medicine prompt', 'success': False})
-        
+
         med_result = gemini_predict(prompt_medicine)
         medicines = med_result.get('medicines', []) if med_result else []
         print(f"Medicine prediction completed: {len(medicines)} medicines found")
-        
+
         # 2. Disease prediction
         prompt_disease = safe_format_prompt(PROMPT_DISEASE, gender=gender, age=age, symptoms=symptoms)
         if not prompt_disease:
             return jsonify({'error': 'Failed to format disease prompt', 'success': False})
-        
+
         disease_result = gemini_predict(prompt_disease)
         diseases = disease_result.get('diseases', []) if disease_result else []
         print(f"Disease prediction completed: {len(diseases)} diseases found")
-        
+
         # 3. Remedies prediction (use top disease if available)
         top_disease = diseases[0]['name'] if diseases else 'general symptoms'
         # Prepare medicine names as a comma-separated string for the remedies prompt
@@ -152,7 +152,7 @@ def predict():
             'natural_treatments': natural_treatments,
             'success': True
         })
-        
+
     except Exception as e:
         print(f'Server error: {e}')
         return jsonify({'error': str(e), 'success': False})
